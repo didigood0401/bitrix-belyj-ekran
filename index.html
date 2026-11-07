@@ -1,0 +1,54 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Белый экран каталога Битрикс - план починки</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#16202a;--mut:#56616d;--bg:#f3f6f9;--line:#dbe3ea;--acc:#d6372b;--ok:#1f8a5b}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Manrope,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px}
+header{padding:54px 0 26px}.tag{color:var(--acc);font-weight:600;font-size:13px}
+h1{font-size:clamp(28px,4.4vw,46px);font-weight:800;line-height:1.1;margin:10px 0 12px}
+.lead{color:var(--mut);font-size:17px;max-width:720px}
+h2{font-size:24px;font-weight:800;margin:44px 0 16px}
+.term{background:#0f1720;color:#c9d6e2;border-radius:14px;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-size:13.5px;overflow:auto;white-space:pre}
+.term .r{color:#ff7a6e}.term .g{color:#6fdc9c}.term .y{color:#ffd479}
+.steps{display:grid;gap:12px;counter-reset:s}
+.st{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px 62px;position:relative}
+.st:before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:16px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.st b{display:block}.st span{color:var(--mut);font-size:15px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.box h3{font-size:16px;margin-bottom:8px}.box li{margin-left:18px;color:var(--mut);font-size:15px;padding:2px 0}
+.price{background:var(--ink);color:#fff;border-radius:16px;padding:24px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;margin-top:30px}
+.price b{font-size:34px}
+footer{padding:40px 0;color:var(--mut);font-size:14px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header class="wrap"><div class="tag">Демо к заданию 14912 · 1С-Битрикс</div>
+<h1>Белый экран только на странице каталога - как найду и исправлю</h1>
+<p class="lead">Если остальные страницы работают, а каталог отдаёт пустой экран, почти всегда это фатальная ошибка PHP в компоненте каталога или его шаблоне, которая скрыта настройками вывода ошибок. Ниже - мой порядок работы, без «перезагрузим и посмотрим».</p></header>
+<main class="wrap">
+<h2>Так обычно выглядит причина в логе</h2>
+<div class="term"><span class="y">$ tail -n 30 /home/bitrix/www/bitrix/php_interface/error.log</span>
+<span class="r">PHP Fatal error:</span> Uncaught Error: Call to undefined function each()
+  in /local/templates/main/components/bitrix/catalog/.default/bitrix/catalog.section/.default/result_modifier.php:41
+<span class="r">PHP Fatal error:</span> Allowed memory size of 134217728 bytes exhausted
+  in /bitrix/modules/iblock/lib/... (каталог с большим числом товаров)
+<span class="g"># после правки шаблона и лимитов:</span>
+<span class="g">HTTP/1.1 200 OK · /catalog/ · 0.84 s</span></div>
+
+<h2>План работ</h2>
+<div class="steps">
+ <div class="st"><b>Бэкап сайта и базы</b><span>Перед любыми правками - полная копия, чтобы всё можно было откатить за минуту.</span></div>
+ <div class="st"><b>Включаю вывод ошибок только для себя</b><span>exception_handling в .settings.php + лог PHP. Посетители ничего не увидят.</span></div>
+ <div class="st"><b>Нахожу точную строку ошибки</b><span>Частые причины: обновление PHP (8.x убрал старые функции), кастомный шаблон catalog.section, сбой кеша, нехватка памяти, битый товар/свойство в инфоблоке, конфликт модуля после обновления.</span></div>
+ <div class="st"><b>Исправляю причину, а не симптом</b><span>Правка шаблона/кода под текущую версию PHP, очистка и пересборка кеша, лимиты памяти, проверка агентов и индекса.</span></div>
+ <div class="st"><b>Проверяю весь каталог</b><span>Разделы, фильтр, пагинация, карточки, корзина, мобильная версия. Отключаю вывод ошибок обратно.</span></div>
+ <div class="st"><b>Отчёт</b><span>Что было, что сделала, как не допустить повторения (особенно при следующих обновлениях).</span></div>
+</div>
+<h2>Что нужно от вас</h2>
+<div class="grid">
+ <div class="box"><h3>Доступы</h3><ul><li>админка Битрикс (логин администратора)</li><li>FTP/SFTP или панель хостинга</li><li>по возможности - доступ к логам/SSH</li></ul></div>
+ <div class="box"><h3>Пара вопросов</h3><ul><li>когда каталог перестал открываться</li><li>что менялось перед этим: обновления, PHP, модули, импорт товаров</li><li>ссылка на страницу каталога</li></ul></div>
+</div>
+<div class="price"><div>Срок - <b>1 день</b><br>чаще всего - в течение пары часов после доступа</div><div><b>2 500 ₽</b><br>фиксированно, без доплат за «сложность»</div></div>
+</main><footer class="wrap">Демо подготовлено для отклика. Диана</footer></body></html>
